@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 
 export async function POST(req: Request) {
   try {
@@ -10,26 +10,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "sourceText প্রয়োজন" }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "GEMINI_API_KEY missing" }, { status: 500 });
+      return NextResponse.json({ error: "OPENAI_API_KEY missing" }, { status: 500 });
     }
 
-    // ✅ Environment Variable থেকে মডেল নাম পড়া হবে, ডিফল্ট 'gemini-1.5-pro'
-    const modelName = process.env.GEMINI_MODEL || "gemini-1.5-pro";
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: modelName });
+    const openai = new OpenAI({ apiKey });
 
     const topicHint = topic
       ? `"${topic}" টপিক থেকে`
       : "সোর্স থেকে র‍্যান্ডম টপিক থেকে";
 
-    const prompt = `তুমি একটি MCQ জেনারেটর। নিচের সোর্স টেক্সট থেকে ${topicHint} একটি নতুন MCQ প্রশ্ন তৈরি করো।
-
-গুরুত্বপূর্ণ:
-- প্রতিবার আলাদা টপিক থেকে প্রশ্ন দাও
-- প্রশ্ন যেন আগের প্রশ্নের পুনরাবৃত্তি না হয়
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `তুমি একটি MCQ জেনারেটর। নিচের সোর্স টেক্সট থেকে ${topicHint} একটি নতুন MCQ প্রশ্ন তৈরি করো।
 
 ফরম্যাট:
 <<<QUESTION>>>
@@ -37,20 +34,24 @@ export async function POST(req: Request) {
   "question": "প্রশ্নটি বাংলায়",
   "options": ["অপশন ১", "অপশন ২", "অপশন ৩", "অপশন ৪"],
   "correctIndex": 0,
-  "explanation": "উত্তর সঠিক হলে: কেন সঠিক, উত্তরের ব্যাখ্যা। উত্তর ভুল হলে: কেন ভুল, সঠিক উত্তর কী এবং কেন সেটা সঠিক - বিস্তারিত ব্যাখ্যা বাংলায়।",
+  "explanation": "উত্তরের ব্যাখ্যা বাংলায়",
   "topic": "টপিকের নাম"
 }
 <<<END>>>
+`
+        },
+        {
+          role: "user",
+          content: `সোর্স টেক্সট:\n${sourceText}`
+        }
+      ],
+      temperature: 0.7,
+    });
 
-সোর্স টেক্সট:
-${sourceText}`;
-
-    const result = await model.generateContent(prompt);
-    const reply = result.response.text();
-
+    const reply = completion.choices[0]?.message?.content || "";
     return NextResponse.json({ reply });
   } catch (error: any) {
-    console.error("Chat API error:", error);
+    console.error("OpenAI Chat API error:", error);
     return NextResponse.json(
       { error: "MCQ জেনারেট করতে সমস্যা হয়েছে" },
       { status: 500 }
