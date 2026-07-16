@@ -5,122 +5,321 @@ import { useEffect, useState } from "react";
 import { analyzePerformance } from "@/data/aiCoach";
 import { getRecommendation } from "@/data/recommendation";
 
+
+type AIReport = {
+  topic: string;
+  attempt: number;
+  correct: number;
+  accuracy: number;
+  masteryLevel: string;
+  masteryColor: string;
+  masteryMessage: string;
+  status: "Weak" | "Good";
+};
+
+
+
 export default function AICoach() {
-  const [report, setReport] = useState<any[]>([]);
+
+
+  const [report, setReport] =
+    useState<AIReport[]>([]);
+
+
 
   useEffect(() => {
-    const data = localStorage.getItem("mcqRecords");
 
-    if (!data) return;
 
-    const records = JSON.parse(data);
+    try {
 
-    setReport(analyzePerformance(records));
+
+      const data =
+        localStorage.getItem("mcqRecords");
+
+
+      if (!data) return;
+
+
+
+      const records =
+        JSON.parse(data);
+
+
+
+      const result =
+        analyzePerformance(records);
+
+
+      const normalizedResult: AIReport[] = result.map(
+        (item: any) => ({
+          ...item,
+          status: item.status === "Weak" ? "Weak" : "Good",
+        })
+      );
+
+
+      setReport(normalizedResult);
+
+
+    } catch(error){
+
+      console.log(
+        "AI Coach loading error:",
+        error
+      );
+
+    }
+
+
   }, []);
 
-  if (report.length === 0) {
-    return (
-      <div className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="text-2xl font-bold">🤖 AI Coach Report</h2>
 
-        <p className="mt-4 text-gray-500">
-          এখনো কোনো Quiz Data নেই।
-        </p>
-      </div>
-    );
-  }
+
+
+
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow-sm">
-      <h2 className="text-2xl font-bold">
+
+    <section
+      className="
+        rounded-2xl
+        bg-white
+        p-6
+        shadow-sm
+        transition
+        hover:shadow-md
+      "
+    >
+
+
+      <h2 className="text-2xl font-extrabold">
         🤖 AI Coach Report
       </h2>
 
-      <div className="mt-6 space-y-6">
-        {report.map((item: any) => {
-          const recommendation =
-            getRecommendation(item.accuracy);
 
-          return (
-            <div
-              key={item.topic}
-              className="rounded-xl border p-5"
-            >
-              <h3 className="text-xl font-bold">
-                📘 {item.topic}
-              </h3>
 
-              <div className="mt-4 space-y-2">
 
-                <p>
-                  📝 Attempt: {item.attempt}
-                </p>
 
-                <p>
-                  ✅ Correct: {item.correct}
-                </p>
+      {report.length === 0 ? (
 
-                <p>
-                  🎯 Accuracy: {item.accuracy}%
-                </p>
+        <div className="
+          mt-5
+          rounded-xl
+          bg-[#FFF8E7]
+          p-5
+          text-gray-600
+        ">
 
-              </div>
+          <p>
+            এখনো কোনো Quiz Data নেই।
+          </p>
 
-              {/* Mastery */}
+          <p className="mt-2 text-sm">
+            MCQ Practice শুরু করলে AI Coach
+            তোমার দুর্বলতা ও উন্নতির পরামর্শ দেবে।
+          </p>
 
-              <div className="mt-5 rounded-lg bg-gray-50 p-4">
-                <p
-                  className={`text-lg font-bold ${item.masteryColor}`}
-                >
-                  {item.masteryLevel}
-                </p>
+        </div>
 
-                <p className="mt-2 text-gray-600">
-                  {item.masteryMessage}
-                </p>
-              </div>
 
-              {/* Status */}
+      ) : (
 
-              <div className="mt-4">
-                {item.status === "Weak" ? (
-                  <p className="font-semibold text-red-600">
-                    ⚠️ Weak Topic - Revision Needed
+
+        <div className="mt-6 space-y-6">
+
+
+          {report.map((item)=>{
+
+
+            const recommendation =
+              getRecommendation(
+                item.accuracy
+              );
+
+
+
+            return (
+
+              <div
+                key={item.topic}
+                className="
+                  rounded-2xl
+                  border
+                  p-5
+                  transition
+                  hover:shadow-sm
+                "
+              >
+
+
+
+                <h3 className="text-xl font-extrabold">
+                  📘 {item.topic}
+                </h3>
+
+
+
+
+                {/* Performance */}
+
+                <div className="
+                  mt-4
+                  grid
+                  grid-cols-1
+                  gap-3
+                  sm:grid-cols-3
+                ">
+
+
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    📝 Attempt
+                    <br />
+                    <b>{item.attempt}</b>
+                  </div>
+
+
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    ✅ Correct
+                    <br />
+                    <b>{item.correct}</b>
+                  </div>
+
+
+                  <div className="rounded-lg bg-gray-50 p-3">
+                    🎯 Accuracy
+                    <br />
+                    <b>{item.accuracy}%</b>
+                  </div>
+
+
+                </div>
+
+
+
+
+
+                {/* Mastery */}
+
+                <div className="
+                  mt-5
+                  rounded-xl
+                  bg-gray-50
+                  p-4
+                ">
+
+
+                  <p
+                    className={`
+                      text-lg
+                      font-extrabold
+                      ${item.masteryColor}
+                    `}
+                  >
+                    {item.masteryLevel}
                   </p>
-                ) : (
-                  <p className="font-semibold text-green-600">
-                    ✅ Good Progress
+
+
+                  <p className="mt-2 text-gray-600">
+                    {item.masteryMessage}
                   </p>
-                )}
-              </div>
 
-              {/* AI Recommendation */}
 
-              <div className="mt-5 rounded-lg bg-blue-50 p-4">
+                </div>
 
-                <h4 className="font-bold">
-                  🤖 AI Suggestion
-                </h4>
 
-                <p className="mt-3">
-                  {recommendation.message}
-                </p>
 
-                <ul className="mt-3 list-disc space-y-1 pl-5">
-                  {recommendation.actions.map(
-                    (action: string, index: number) => (
-                      <li key={index}>
-                        {action}
-                      </li>
-                    )
+
+
+
+                {/* Status */}
+
+                <div className="mt-4">
+
+                  {item.status === "Weak" ? (
+
+                    <p className="font-bold text-red-600">
+                      ⚠️ Weak Topic - Revision Needed
+                    </p>
+
+                  ) : (
+
+                    <p className="font-bold text-green-600">
+                      ✅ Good Progress
+                    </p>
+
                   )}
-                </ul>
+
+                </div>
+
+
+
+
+
+
+
+                {/* AI Suggestion */}
+
+                <div className="
+                  mt-5
+                  rounded-xl
+                  bg-blue-50
+                  p-4
+                ">
+
+
+                  <h4 className="font-extrabold">
+                    🤖 AI Suggestion
+                  </h4>
+
+
+
+                  <p className="mt-3 text-gray-700">
+                    {recommendation.message}
+                  </p>
+
+
+
+
+                  <ul className="
+                    mt-3
+                    list-disc
+                    space-y-1
+                    pl-5
+                  ">
+
+                    {recommendation.actions.map(
+                      (action,index)=>(
+                        <li key={index}>
+                          {action}
+                        </li>
+                      )
+                    )}
+
+                  </ul>
+
+
+                </div>
+
+
+
 
               </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+
+            );
+
+
+          })}
+
+
+        </div>
+
+
+      )}
+
+
+
+    </section>
+
   );
+
 }

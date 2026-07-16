@@ -1,292 +1,252 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import RevisionQuiz from "@/components/RevisionQuiz";
 
 
-export default function RevisionPage(){
+type RevisionItem = {
+  subject: string;
+  topic: string;
+  correct: string;
+  wrong: string;
+  accuracy: string;
+  status: string;
+};
 
 
-const [mistakes,setMistakes] =
-useState<any[]>([]);
 
+export default function RevisionPage() {
 
+  const [records, setRecords] =
+    useState<RevisionItem[]>([]);
 
 
+  const [filter, setFilter] =
+    useState("All");
 
-useEffect(()=>{
 
 
-const data =
-localStorage.getItem(
-"wrongMCQ"
-);
+  useEffect(() => {
 
+    const data =
+      localStorage.getItem(
+        "mcqMastery"
+      );
 
 
-if(data){
+    if(data){
 
+      setRecords(
+        JSON.parse(data)
+      );
 
-setMistakes(
-JSON.parse(data)
-);
+    }
 
 
-}
+  }, []);
 
 
-},[]);
 
 
 
+  const filteredRecords =
+    filter === "All"
+    ?
+    records
+    :
+    records.filter(
+      item =>
+        item.status === filter
+    );
 
 
 
-return (
 
 
-<main className="
-min-h-screen
-bg-[#FFF8E7]
-p-8
-text-gray-900
-">
+  return (
 
+    <main className="
+      min-h-screen
+      bg-[#FFF8E7]
+      p-4
+      md:p-8
+      text-gray-900
+    ">
 
 
+      <h1 className="
+        text-3xl
+        font-extrabold
+        md:text-4xl
+      ">
+        🔁 Revision Bank
+      </h1>
 
 
-<h1 className="text-4xl font-bold">
+      <p className="mt-2 text-gray-600">
+        Revise your MCQ mistakes and strengthen weak topics.
+      </p>
 
-❌ Wrong MCQ Revision Bank
 
-</h1>
 
 
+      {/* Filter */}
 
-<p className="mt-2 text-gray-600">
+      <div className="mt-6 flex flex-wrap gap-3">
 
-Review your mistakes and improve your weak areas.
+        {[
+          "All",
+          "🏆 Mastered",
+          "📚 Learning"
+        ].map(item=>(
 
-</p>
+          <button
 
+            key={item}
 
+            onClick={() =>
+              setFilter(item)
+            }
 
+            className={`
+              rounded-xl
+              px-4
+              py-2
+              font-bold
 
+              ${
+                filter === item
+                ?
+                "bg-emerald-500 text-white"
+                :
+                "bg-white"
+              }
+            `}
+          >
 
+            {item}
 
+          </button>
 
-{/* Revision Quiz */}
 
+        ))}
 
-<div className="mt-8">
+      </div>
 
 
-<RevisionQuiz />
 
 
-</div>
 
+      {/* Records */}
 
 
+      <div className="
+        mt-8
+        grid
+        gap-5
+        md:grid-cols-2
+        lg:grid-cols-3
+      ">
 
 
+      {
+        filteredRecords.length > 0
+        ?
 
+        filteredRecords.map((item,index)=>(
 
-{/* Mistake List */}
 
+          <div
+            key={index}
+            className="
+              rounded-2xl
+              bg-white
+              p-6
+              shadow-sm
+            "
+          >
 
-<div className="
-mt-8
-grid
-gap-6
-md:grid-cols-2
-lg:grid-cols-3
-">
 
+            <h2 className="text-xl font-bold">
+              📖 {item.subject}
+            </h2>
 
 
+            <p className="mt-3 font-semibold">
+              📝 {item.topic}
+            </p>
 
 
-{
 
-mistakes.length===0
+            <div className="mt-4 space-y-2">
 
-?
+              <p>
+                ✅ Correct:
+                {" "}
+                {item.correct}
+              </p>
 
-<div className="
-rounded-xl
-bg-white
-p-6
-shadow-sm
-">
 
+              <p>
+                ❌ Wrong:
+                {" "}
+                {item.wrong}
+              </p>
 
-<h2 className="text-xl font-bold">
 
-🎉 No Mistakes Yet
+              <p>
+                🎯 Accuracy:
+                {" "}
+                {item.accuracy}
+              </p>
 
-</h2>
 
+            </div>
 
-<p className="mt-3">
 
-Practice MCQ করলে ভুল প্রশ্নগুলো এখানে আসবে।
 
-</p>
 
 
-</div>
+            <div className="
+              mt-5
+              rounded-xl
+              bg-gray-50
+              p-4
+            ">
 
+              <p className="font-bold">
+                Status:
+              </p>
 
+              <p>
+                {item.status}
+              </p>
 
+            </div>
 
 
-:
+          </div>
 
 
+        ))
 
-mistakes.map(
-(item:any)=>(
+        :
 
+        <div className="
+          rounded-xl
+          bg-white
+          p-6
+        ">
+          এখনো কোনো Revision Data নেই।
+        </div>
 
+      }
 
-<div
 
-key={item.id}
+      </div>
 
-className="
-rounded-xl
-bg-white
-p-6
-shadow-sm
-"
 
->
+    </main>
 
-
-
-<h2 className="text-xl font-bold">
-
-📘 {item.topic}
-
-</h2>
-
-
-
-
-
-<div className="mt-4">
-
-
-<p className="font-semibold">
-
-❓ Question:
-
-</p>
-
-
-<p>
-
-{item.question}
-
-</p>
-
-
-</div>
-
-
-
-
-
-
-<div className="
-mt-4
-rounded-lg
-bg-red-50
-p-3
-">
-
-
-<p className="font-semibold text-red-600">
-
-Your Answer ❌
-
-</p>
-
-
-<p>
-
-{item.selectedAnswer}
-
-</p>
-
-
-</div>
-
-
-
-
-
-
-
-<div className="
-mt-3
-rounded-lg
-bg-green-50
-p-3
-">
-
-
-<p className="font-semibold text-green-600">
-
-Correct Answer ✅
-
-</p>
-
-
-<p>
-
-{item.correctAnswer}
-
-</p>
-
-
-</div>
-
-
-
-
-
-
-
-</div>
-
-
-
-)
-
-
-)
-
-
-
-}
-
-
-
-
-</div>
-
-
-
-
-
-
-</main>
-
-
-);
-
+  );
 
 }

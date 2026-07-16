@@ -6,11 +6,11 @@ import { usePathname } from "next/navigation";
 
 export default function Sidebar(){
 
+
 const pathname = usePathname();
 
 
-
-const menu = [
+const menu=[
 
 {
 name:"🏠 Dashboard",
@@ -28,15 +28,14 @@ path:"/library"
 },
 
 {
-name:"❌ Revision Bank",
+name:"🔁 Revision Bank",
 path:"/revision"
 },
 
 {
 name:"🤖 AI Coach",
 path:"/#aicoach"
-},
-
+}
 
 ];
 
@@ -44,34 +43,40 @@ path:"/#aicoach"
 
 return (
 
-<aside className="
-w-64
-min-h-screen
+<aside
+className="
+fixed
+left-0
+top-0
+h-screen
+w-48
 bg-white
 border-r
-p-6
-">
+p-4
+"
+>
 
 
-<h1 className="
-text-2xl
-font-bold
+<h1
+className="
 mb-8
-">
-
+text-2xl
+font-extrabold
+"
+>
 🚀 PrepFlow
-
 </h1>
 
 
 
-<nav className="space-y-3">
-
+<nav
+className="
+space-y-3
+"
+>
 
 {
-
-menu.map((item)=>(
-
+menu.map(item=>(
 
 <Link
 
@@ -81,22 +86,17 @@ href={item.path}
 
 className={`
 block
-rounded-lg
+rounded-xl
 px-4
 py-3
 font-semibold
 
 ${
-pathname === item.path
-
+pathname===item.path
 ?
-
 "bg-emerald-500 text-white"
-
 :
-
 "hover:bg-gray-100"
-
 }
 
 `}
@@ -107,18 +107,14 @@ pathname === item.path
 
 </Link>
 
-
 ))
-
 }
-
 
 
 </nav>
 
 
 </aside>
-
 
 );
 
