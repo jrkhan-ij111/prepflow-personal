@@ -1,4 +1,4 @@
-"use client";
+import AiCoachPanel from "@/components/ai-coach/panel";
 
 import { useEffect, useState } from "react";
 

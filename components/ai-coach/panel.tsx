@@ -13,6 +13,8 @@ type ParsedQuestion = {
 };
 type McqRecord = { topic: string; correct: boolean; date: string };
 
+const MASTERY_THRESHOLD = 5;
+
 function extractFirstQuestion(text: string): ParsedQuestion | null {
   const match = text.match(/<<<QUESTION>>>([\s\S]*?)<<<END>>>/);
   if (!match) return null;
@@ -61,6 +63,7 @@ export default function AiCoachPanel({
   const [fileName, setFileName] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [manualText, setManualText] = useState("");
 
   const [tab, setTab] = useState<"practice" | "ask" | "progress">("practice");
   const [topicInput, setTopicInput] = useState("");
@@ -73,6 +76,7 @@ export default function AiCoachPanel({
 
   const [sessionCount, setSessionCount] = useState(0);
   const [records, setRecords] = useState<McqRecord[]>([]);
+  const [sessionTopics, setSessionTopics] = useState<{ topic: string; correct: boolean }[]>([]);
 
   useEffect(() => {
     const saved = localStorage.getItem("aiCoachSource");
@@ -114,6 +118,32 @@ export default function AiCoachPanel({
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
   }, [records]);
 
+  const sessionTopicStats = useMemo(() => {
+    const map: Record<string, { total: number; correct: number }> = {};
+    sessionTopics.forEach((entry) => {
+      if (!map[entry.topic]) map[entry.topic] = { total: 0, correct: 0 };
+      map[entry.topic].total += 1;
+      if (entry.correct) map[entry.topic].correct += 1;
+    });
+    return Object.entries(map).map(([topic, stat]) => ({
+      topic,
+      total: stat.total,
+      correct: stat.correct,
+      mastered: stat.correct >= MASTERY_THRESHOLD,
+      progressPercent: Math.min(100, Math.round((stat.correct / MASTERY_THRESHOLD) * 100)),
+    }));
+  }, [sessionTopics]);
+
+  function resetCoachState() {
+    setHistory([]);
+    setCurrentQuestion(null);
+    setSelectedIndex(null);
+    setSessionCount(0);
+    setTopicInput("");
+    setFetchError("");
+    setSessionTopics([]);
+  }
+
   async function handleUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -131,17 +161,22 @@ export default function AiCoachPanel({
       setSourceText(data.text);
       setFileName(data.fileName);
       localStorage.setItem("aiCoachSource", JSON.stringify({ text: data.text, name: data.fileName }));
-      setHistory([]);
-      setCurrentQuestion(null);
-      setSelectedIndex(null);
-      setSessionCount(0);
-      setTopicInput("");
-      setFetchError("");
+      resetCoachState();
     } catch {
       setUploadError("আপলোড করতে সমস্যা হয়েছে");
     } finally {
       setUploading(false);
     }
+  }
+
+  function handleManualTextSubmit() {
+    const text = manualText.trim();
+    if (!text) return;
+    setSourceText(text);
+    setFileName("manual-text.txt");
+    localStorage.setItem("aiCoachSource", JSON.stringify({ text, name: "manual-text.txt" }));
+    resetCoachState();
+    setManualText("");
   }
 
   async function fetchNextQuestion() {
@@ -187,13 +222,13 @@ export default function AiCoachPanel({
     saveMcqRecord(currentQuestion.topic, correct);
     setRecords(loadRecords());
     setSessionCount((c) => c + 1);
+    setSessionTopics((prev) => [...prev, { topic: currentQuestion.topic, correct }]);
   }
 
   const isCorrectAnswer = selectedIndex !== null && currentQuestion && selectedIndex === currentQuestion.correctIndex;
 
   return (
     <section className="overflow-hidden rounded-2xl shadow-sm">
-      {/* হেডার */}
       <div className="border-b bg-white px-5 py-4">
         <h2 className="text-2xl font-extrabold text-emerald-800">{title}</h2>
         {subtitle && <p className="mt-0.5 text-sm text-gray-500">{subtitle}</p>}
@@ -201,13 +236,40 @@ export default function AiCoachPanel({
 
       <div className="bg-[#FFF8E7] p-4">
         {!sourceText ? (
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <p className="mb-4 text-gray-700">
+          <div className="rounded-2xl bg-white p-6 shadow-sm space-y-4">
+            <p className="text-gray-700">
               একটা PDF আপলোড করো — কোচ সেই কনটেন্ট থেকে তোমার জন্য MCQ প্রশ্ন তৈরি করবে।
             </p>
-            <input type="file" accept="application/pdf" onChange={handleUpload} disabled={uploading} />
-            {uploading && <p className="mt-3 text-sm text-gray-500">PDF প্রসেস হচ্ছে...</p>}
-            {uploadError && <p className="mt-3 text-sm text-red-600">{uploadError}</p>}
+            <div className="w-full overflow-hidden">
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={handleUpload}
+                disabled={uploading}
+                className="w-full max-w-full text-sm"
+              />
+            </div>
+            {uploading && <p className="text-sm text-gray-500">PDF প্রসেস হচ্ছে...</p>}
+            {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
+
+            {/* ম্যানুয়াল টেক্সট ইনপুট */}
+            <div className="border-t pt-4 mt-4">
+              <p className="text-sm text-gray-600 mb-2">অথবা সরাসরি টেক্সট পেস্ট করো:</p>
+              <textarea
+                value={manualText}
+                onChange={(e) => setManualText(e.target.value)}
+                rows={5}
+                className="w-full rounded-xl border p-3 text-sm"
+                placeholder="এখানে তোমার নোট / টেক্সট পেস্ট করো..."
+              />
+              <button
+                onClick={handleManualTextSubmit}
+                disabled={!manualText.trim()}
+                className="mt-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              >
+                টেক্সট ব্যবহার করো
+              </button>
+            </div>
           </div>
         ) : (
           <div className="rounded-2xl bg-white p-4 shadow-sm">
@@ -217,7 +279,6 @@ export default function AiCoachPanel({
                 <p className="truncate text-sm text-gray-500">📄 {fileName}</p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                {/* ট্যাব ন্যাভিগেশন */}
                 <div className="flex rounded-xl bg-gray-100 p-1">
                   {(["practice", "ask", "progress"] as const).map((t) => (
                     <button
@@ -236,12 +297,7 @@ export default function AiCoachPanel({
                     localStorage.removeItem("aiCoachSource");
                     setSourceText("");
                     setFileName("");
-                    setHistory([]);
-                    setCurrentQuestion(null);
-                    setSelectedIndex(null);
-                    setSessionCount(0);
-                    setTopicInput("");
-                    setFetchError("");
+                    resetCoachState();
                   }}
                   className="text-xs text-red-600 hover:underline sm:text-sm"
                 >
@@ -251,20 +307,65 @@ export default function AiCoachPanel({
             </div>
 
             {tab === "practice" && (
-              <div className="mt-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                  <input
-                    value={topicInput}
-                    onChange={(e) => setTopicInput(e.target.value)}
-                    placeholder="টপিক লেখো (খালি রাখলে সব টপিক)"
-                    className="w-full rounded-xl border bg-white px-3 py-2 text-sm sm:w-64"
-                  />
-                  <p className="text-sm text-gray-500">
-                    আজ: {todayCount}টি | সেশন: {sessionCount}টি
-                  </p>
+              <div className="mt-4 flex flex-col lg:flex-row gap-4">
+                {/* বাম সাইডবার */}
+                <div className="lg:w-64 shrink-0 space-y-3">
+                  <h3 className="font-bold text-sm text-gray-700">📚 টপিকসমূহ</h3>
+                  {sessionTopicStats.length === 0 && (
+                    <p className="text-xs text-gray-500">প্রশ্ন শুরু করলে টপিক আসবে</p>
+                  )}
+                  <div className="space-y-2">
+                    {sessionTopicStats.map((item) => (
+                      <button
+                        key={item.topic}
+                        onClick={() => setTopicInput(item.topic)}
+                        className={`w-full text-left rounded-lg border p-2 text-xs transition ${
+                          topicInput === item.topic
+                            ? "border-emerald-500 bg-emerald-50"
+                            : "border-gray-200 bg-white hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex justify-between font-medium">
+                          <span className="truncate">{item.topic}</span>
+                          <span className={item.mastered ? "text-green-600" : "text-gray-500"}>
+                            {item.correct}/{MASTERY_THRESHOLD}
+                          </span>
+                        </div>
+                        <div className="mt-1 h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              item.mastered ? "bg-green-500" : "bg-amber-500"
+                            }`}
+                            style={{ width: `${item.progressPercent}%` }}
+                          />
+                        </div>
+                        {item.mastered && (
+                          <span className="text-green-600 text-[10px]">✓ মাস্টার্ড</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  {topicInput && (
+                    <button onClick={() => setTopicInput("")} className="text-xs text-blue-600 hover:underline">
+                      সব টপিক দেখাও
+                    </button>
+                  )}
                 </div>
 
-                <div className="mt-4">
+                {/* ডান পাশ */}
+                <div className="flex-1">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-4">
+                    <input
+                      value={topicInput}
+                      onChange={(e) => setTopicInput(e.target.value)}
+                      placeholder="টপিক লেখো (খালি রাখলে সব টপিক)"
+                      className="w-full rounded-xl border bg-white px-3 py-2 text-sm sm:w-64"
+                    />
+                    <p className="text-sm text-gray-500">
+                      আজ: {todayCount}টি | সেশন: {sessionCount}টি
+                    </p>
+                  </div>
+
                   {!currentQuestion && !loadingQ && !fetchError && (
                     <div className="rounded-xl border border-dashed p-8 text-center text-gray-500">
                       "প্রশ্ন শুরু করো" চাপো শুরু করার জন্য
@@ -298,7 +399,7 @@ export default function AiCoachPanel({
                               key={oi}
                               disabled={isAnswered}
                               onClick={() => handleAnswer(oi)}
-                              className={`block w-full rounded-lg border px-4 py-3 text-left ${style}`}
+                              className={`block w-full rounded-lg border px-4 py-3 text-left text-sm sm:text-base ${style}`}
                             >
                               {["ক", "খ", "গ", "ঘ"][oi]}. {opt}
                             </button>
@@ -330,17 +431,17 @@ export default function AiCoachPanel({
                       )}
                     </div>
                   )}
-                </div>
 
-                {!currentQuestion && !loadingQ && (
-                  <button
-                    onClick={fetchNextQuestion}
-                    disabled={loadingQ}
-                    className="mt-4 w-full rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
-                  >
-                    প্রশ্ন শুরু করো →
-                  </button>
-                )}
+                  {!currentQuestion && !loadingQ && (
+                    <button
+                      onClick={fetchNextQuestion}
+                      disabled={loadingQ}
+                      className="mt-4 w-full rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
+                    >
+                      প্রশ্ন শুরু করো →
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
@@ -352,7 +453,7 @@ export default function AiCoachPanel({
 
             {tab === "progress" && (
               <div className="mt-4 space-y-6">
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                   <div className="rounded-xl bg-emerald-50 p-2.5 text-center sm:p-4">
                     <p className="text-lg font-extrabold text-gray-900 sm:text-2xl">{totalCount}</p>
                     <p className="text-[11px] text-gray-500 sm:text-xs">মোট প্রশ্ন</p>
