@@ -15,10 +15,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "GEMINI_API_KEY missing" }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" }); // ✅ changed model
+    // ✅ Environment Variable থেকে মডেল নাম পড়া হবে, ডিফল্ট 'gemini-1.5-pro'
+    const modelName = process.env.GEMINI_MODEL || "gemini-1.5-pro";
 
-    const topicHint = topic ? `"${topic}" টপিক থেকে` : "সোর্স থেকে র‍্যান্ডম টপিক থেকে";
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: modelName });
+
+    const topicHint = topic
+      ? `"${topic}" টপিক থেকে`
+      : "সোর্স থেকে র‍্যান্ডম টপিক থেকে";
 
     const prompt = `তুমি একটি MCQ জেনারেটর। নিচের সোর্স টেক্সট থেকে ${topicHint} একটি নতুন MCQ প্রশ্ন তৈরি করো।
 
@@ -46,6 +51,9 @@ ${sourceText}`;
     return NextResponse.json({ reply });
   } catch (error: any) {
     console.error("Chat API error:", error);
-    return NextResponse.json({ error: "MCQ জেনারেট করতে সমস্যা হয়েছে" }, { status: 500 });
+    return NextResponse.json(
+      { error: "MCQ জেনারেট করতে সমস্যা হয়েছে" },
+      { status: 500 }
+    );
   }
 }
