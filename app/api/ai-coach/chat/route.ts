@@ -6,7 +6,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { sourceText, topic } = body;
 
-    if (!sourceText || sourceText.trim().length === 0) {
+    if (!sourceText?.trim()) {
       return NextResponse.json({ error: "sourceText প্রয়োজন" }, { status: 400 });
     }
 
